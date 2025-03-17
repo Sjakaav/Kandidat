@@ -243,7 +243,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 21b29c29c203b6a4a97450f1eb4905ef, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  chatbot: {fileID: 0}
+  chatbot: {fileID: 1576180507}
 --- !u!4 &923349053
 Transform:
   m_ObjectHideFlags: 0
@@ -332,7 +332,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 57f4a50e0a1b71e499e9145e13499027, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  tts: {fileID: 0}
+  tts: {fileID: 1049019130}
 --- !u!4 &1576180508
 Transform:
   m_ObjectHideFlags: 0

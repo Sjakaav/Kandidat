@@ -19,6 +19,15 @@ public class STTManager : MonoBehaviour
         if (Application.platform == RuntimePlatform.Android)
         {
             speechRecognizer = new AndroidJavaObject("android.speech.SpeechRecognizer");
+            RequestPermissions(); // Ask for microphone permission when the app starts
+        }
+    }
+    
+    public void RequestPermissions()
+    {
+        if (!Permission.HasUserAuthorizedPermission(Permission.Microphone))
+        {
+            Permission.RequestUserPermission(Permission.Microphone);
         }
     }
 
