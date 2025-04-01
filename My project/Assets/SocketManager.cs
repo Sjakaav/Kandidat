@@ -8,26 +8,35 @@ public class SocketManager : MonoBehaviour
     public TMP_InputField messageInput;  // Input field for user messages
     public TMP_Text responseText;        // TextMeshPro UI Text to display AI responses
     private string latestResponse = "";  // Temporary variable for UI update
+    string serverIP = "http://127.0.0.1:5000";  // Replace with your PC's local IP address or localhost
 
     void Start()
     {
         // Connect to the Python WebSocket server
-        socket = new SocketIOUnity("http://localhost:5000", new SocketIOClient.SocketIOOptions
+        socket = new SocketIOUnity(serverIP, new SocketIOClient.SocketIOOptions
         {
             Transport = SocketIOClient.Transport.TransportProtocol.WebSocket
         });
 
         // Event Listeners
-        socket.OnConnected += (sender, e) => Debug.Log("Connected to Python server!");
-        
+        socket.OnConnected += (sender, e) =>
+        {
+            Debug.Log("Connected to Python server!");
+        };
+
         // Listen for 'message' event (AI response from Python)
         socket.On("message", response =>
         {
             string data = response.GetValue<string>();  // Extract response as string
             Debug.Log("Received from Python: " + data);
-            
+
             latestResponse = data;  // Store response in a variable for Update() to handle
         });
+
+        socket.OnDisconnected += (sender, e) =>
+        {
+            Debug.Log("Disconnected from Python server.");
+        };
 
         socket.Connect();
     }
