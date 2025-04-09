@@ -1,36 +1,58 @@
 using UnityEngine;
 using TMPro;
 using SocketIOClient;
+using System;
+using System.Collections;
+using System.Collections.Concurrent;
+using System.Text;
+using System;
+using System.IO;
 
 public class SocketManager : MonoBehaviour
 {
     private SocketIOUnity socket;
-    public TMP_InputField messageInput;  // Input field for user messages
-    public TMP_Text responseText;        // TextMeshPro UI Text to display AI responses
-    private string latestResponse = "";  // Temporary variable for UI update
-    string serverIP = "http://127.0.0.1:5000";  // Replace with your PC's local IP address or localhost
+    public TMP_InputField messageInput;
+    public TMP_Text responseText;
+    public AudioSource audioSource;
+
+    private string serverIP = "http://127.0.0.1:5000";
+
+    private ConcurrentQueue<Action> mainThreadActions = new ConcurrentQueue<Action>();
 
     void Start()
     {
-        // Connect to the Python WebSocket server
         socket = new SocketIOUnity(serverIP, new SocketIOClient.SocketIOOptions
         {
             Transport = SocketIOClient.Transport.TransportProtocol.WebSocket
         });
 
-        // Event Listeners
         socket.OnConnected += (sender, e) =>
         {
             Debug.Log("Connected to Python server!");
         };
 
-        // Listen for 'message' event (AI response from Python)
-        socket.On("message", response =>
+        // Listen for AI response with audio
+        socket.On("audio_response", response =>
         {
-            string data = response.GetValue<string>();  // Extract response as string
-            Debug.Log("Received from Python: " + data);
+            try
+            {
+                string json = response.ToString();
+                Debug.Log("Raw response: " + json);
 
-            latestResponse = data;  // Store response in a variable for Update() to handle
+                string text = response.GetValue().GetProperty("text").GetString();
+                string base64Audio = response.GetValue().GetProperty("audio").GetString();
+
+                // Queue the Unity work to run on main thread
+                mainThreadActions.Enqueue(() =>
+                {
+                    responseText.SetText(text);
+                    StartCoroutine(PlayAudioFromBase64(base64Audio));
+                });
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError("Failed to parse response: " + ex);
+            }
         });
 
         socket.OnDisconnected += (sender, e) =>
@@ -43,22 +65,36 @@ public class SocketManager : MonoBehaviour
 
     void Update()
     {
-        // If there's a new response, update the UI
-        if (!string.IsNullOrEmpty(latestResponse))
+        // Handle any queued main thread work
+        while (mainThreadActions.TryDequeue(out var action))
         {
-            responseText.SetText(latestResponse);  // Update TextMeshPro UI text
-            latestResponse = "";  // Clear to prevent unnecessary updates
+            action.Invoke();
         }
     }
 
-    // Called when the button is clicked
     public void SendMessageToServer()
     {
-        string message = messageInput.text;  // Get text from the input field
+        string message = messageInput.text;
         if (!string.IsNullOrEmpty(message))
         {
             socket.Emit("message", message);
             Debug.Log("Sent to Python: " + message);
+        }
+    }
+
+    private IEnumerator PlayAudioFromBase64(string base64Audio)
+    {
+        byte[] audioBytes = Convert.FromBase64String(base64Audio);
+
+        // Load WAV audio clip from bytes
+        using (var memoryStream = new MemoryStream(audioBytes))
+        {
+            var www = new WWW("data:audio/wav;base64," + Convert.ToBase64String(audioBytes));
+            yield return www;
+
+            AudioClip clip = www.GetAudioClip(false, false, AudioType.WAV);
+            audioSource.clip = clip;
+            audioSource.Play();
         }
     }
 
