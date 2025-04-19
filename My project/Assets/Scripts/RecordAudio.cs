@@ -65,6 +65,9 @@ public class RecordAudio : MonoBehaviour
 
         // Save the trimmed clip
         SaveRecording();
+        
+        // Sends the saved clip to the server
+        FindObjectOfType<SocketManager>().SendAudioToServer();
     }
 
     private void Update()
