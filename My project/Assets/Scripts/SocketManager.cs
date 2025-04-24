@@ -4,11 +4,14 @@ using SocketIOClient;
 using System;
 using System.Collections.Concurrent;
 using System.IO;
+using Newtonsoft.Json.Linq;
+
 
 public class SocketManager : MonoBehaviour
 {
     private SocketIOUnity socket;
     public TMP_Text responseText;
+    public TMP_Text transciptionText;
 
     private string serverIP = "http://127.0.0.1:5000";
     private ConcurrentQueue<Action> mainThreadActions = new ConcurrentQueue<Action>();
@@ -27,13 +30,30 @@ public class SocketManager : MonoBehaviour
 
         socket.On("ai_response", response =>
         {
-            string reply = response.GetValue<string>();
-            Debug.Log("💬 AI Response: " + reply);
-
-            mainThreadActions.Enqueue(() =>
+            try
             {
-                responseText.text = reply;
-            });
+                Debug.Log("🧪 Received ai_response");
+                string jsonString = response.GetValue<string>();
+                Debug.Log("✅ Parsed JSON string: " + jsonString);
+
+                JObject json = JObject.Parse(jsonString);
+
+                string reply = json["response"]?.ToString();
+                string transcription = json["transcription"]?.ToString();
+
+                Debug.Log("🗣️ Transcription: " + transcription);
+                Debug.Log("💬 AI Response: " + reply);
+
+                mainThreadActions.Enqueue(() =>
+                {
+                    transciptionText.text = transcription;
+                    responseText.text = reply;
+                });
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError("🚨 Failed to parse ai_response: " + ex.Message);
+            }
         });
 
         socket.OnDisconnected += (sender, e) =>
