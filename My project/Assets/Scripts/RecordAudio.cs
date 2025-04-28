@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
-
+/**
 public class RecordAudio : MonoBehaviour
 {
     private AudioClip recordedClip;
@@ -97,3 +97,5 @@ public class RecordAudio : MonoBehaviour
         }
     }
 }
+**/
+ 
