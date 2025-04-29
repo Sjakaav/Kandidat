@@ -6,7 +6,6 @@ using System.Collections.Concurrent;
 using System.IO;
 using Newtonsoft.Json.Linq;
 
-
 public class SocketManager : MonoBehaviour
 {
     private SocketIOUnity socket;
@@ -28,27 +27,51 @@ public class SocketManager : MonoBehaviour
             Debug.Log("✅ Connected to Python server");
         };
 
+        // 🔵 Handle transcription early
+        socket.On("transcription_ready", response =>
+        {
+            try
+            {
+                Debug.Log("🧪 Received transcription_ready");
+
+                string jsonString = response.GetValue<string>();
+                Debug.Log("✅ Raw JSON: " + jsonString);
+
+                JObject json = JObject.Parse(jsonString);
+                string transcription = json["transcription"]?.ToString();
+
+                mainThreadActions.Enqueue(() =>
+                {
+                    transciptionText.text = transcription;
+                });
+
+                Debug.Log("📝 Updated transcription text: " + transcription);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError("🚨 Failed to parse transcription_ready: " + ex.Message);
+            }
+        });
+
+        // 🤖 Handle AI response separately
         socket.On("ai_response", response =>
         {
             try
             {
                 Debug.Log("🧪 Received ai_response");
+
                 string jsonString = response.GetValue<string>();
-                Debug.Log("✅ Parsed JSON string: " + jsonString);
+                Debug.Log("✅ Raw JSON: " + jsonString);
 
                 JObject json = JObject.Parse(jsonString);
-
                 string reply = json["response"]?.ToString();
-                string transcription = json["transcription"]?.ToString();
-
-                Debug.Log("🗣️ Transcription: " + transcription);
-                Debug.Log("💬 AI Response: " + reply);
 
                 mainThreadActions.Enqueue(() =>
                 {
-                    transciptionText.text = transcription;
                     responseText.text = reply;
                 });
+
+                Debug.Log("💬 Updated AI reply: " + reply);
             }
             catch (Exception ex)
             {
