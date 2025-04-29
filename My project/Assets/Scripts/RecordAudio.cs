@@ -90,7 +90,7 @@ public class RecordAudio : MonoBehaviour
         if (File.Exists(filePath))
         {
             Debug.Log("✅ File successfully saved at: " + filePath);
-            FindObjectOfType<SocketManager>().SendAudioToServer();
+            //FindObjectOfType<SocketManager>().SendAudioToServer();
         }
         else
         {

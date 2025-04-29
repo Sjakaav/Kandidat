@@ -7,6 +7,6 @@ public class SendAudioToServer : MonoBehaviour
     public void SendClipToServer()
     {
         // Sends the saved clip to the server
-        FindObjectOfType<SocketManager>().SendAudioToServer();
+        // FindObjectOfType<SocketManager>().SendAudioToServer();
     }
 }
