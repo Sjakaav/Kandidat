@@ -4,11 +4,13 @@ using SocketIOClient;
 using System;
 using System.Collections.Concurrent;
 using System.IO;
+using Newtonsoft.Json.Linq;
 
 public class SocketManager : MonoBehaviour
 {
     private SocketIOUnity socket;
     public TMP_Text responseText;
+    public TMP_Text transciptionText;
 
     private string serverIP = "http://127.0.0.1:5000";
     private ConcurrentQueue<Action> mainThreadActions = new ConcurrentQueue<Action>();
@@ -25,15 +27,56 @@ public class SocketManager : MonoBehaviour
             Debug.Log("✅ Connected to Python server");
         };
 
+        // 🔵 Handle transcription early
+        socket.On("transcription_ready", response =>
+        {
+            try
+            {
+                Debug.Log("🧪 Received transcription_ready");
+
+                string jsonString = response.GetValue<string>();
+                Debug.Log("✅ Raw JSON: " + jsonString);
+
+                JObject json = JObject.Parse(jsonString);
+                string transcription = json["transcription"]?.ToString();
+
+                mainThreadActions.Enqueue(() =>
+                {
+                    transciptionText.text = transcription;
+                });
+
+                Debug.Log("📝 Updated transcription text: " + transcription);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError("🚨 Failed to parse transcription_ready: " + ex.Message);
+            }
+        });
+
+        // 🤖 Handle AI response separately
         socket.On("ai_response", response =>
         {
-            string reply = response.GetValue<string>();
-            Debug.Log("💬 AI Response: " + reply);
-
-            mainThreadActions.Enqueue(() =>
+            try
             {
-                responseText.text = reply;
-            });
+                Debug.Log("🧪 Received ai_response");
+
+                string jsonString = response.GetValue<string>();
+                Debug.Log("✅ Raw JSON: " + jsonString);
+
+                JObject json = JObject.Parse(jsonString);
+                string reply = json["response"]?.ToString();
+
+                mainThreadActions.Enqueue(() =>
+                {
+                    responseText.text = reply;
+                });
+
+                Debug.Log("💬 Updated AI reply: " + reply);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError("🚨 Failed to parse ai_response: " + ex.Message);
+            }
         });
 
         socket.OnDisconnected += (sender, e) =>
