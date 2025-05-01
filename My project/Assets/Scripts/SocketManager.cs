@@ -129,7 +129,7 @@ public class SocketManager : MonoBehaviour
         {
             Debug.LogWarning("⚠️ WebGL socket not ready. Queuing audio.");
             pendingBase64Audio = base64Audio;
-            return;
+            return; 
         }
         // Wrap the raw base64 in quotes so SocketIO_Emit → JSON.parse(js) yields a JS string
         string payload = "\"" + base64Audio + "\"";
@@ -169,7 +169,7 @@ public class SocketManager : MonoBehaviour
 
     // ─── Callbacks from JS (WebGL) ────────────────────────────────────────────
 #if UNITY_WEBGL && !UNITY_EDITOR
-    private void onSocketIOConnect()
+    public void onSocketIOConnect()
     {
         Debug.Log("✅ WebGL Socket.IO connected");
         isSocketReady = true;
@@ -183,23 +183,21 @@ public class SocketManager : MonoBehaviour
         }
     }
 
-    private void onSocketIODisconnect()
+    public void onSocketIODisconnect()
     {
         Debug.LogWarning("🔌 WebGL Socket.IO disconnected");
         isSocketReady = false;
     }
 
-    private void onConnectError(string message)
+    public void onConnectError(string message)
     {
         Debug.LogError("🔌 WebGL Socket.IO connect_error: " + message);
     }
 
-    private void onTranscription(string jsonString)
+    public void onTranscription(string transcription)
     {
         try
         {
-            JObject json = JObject.Parse(jsonString);
-            string transcription = json["transcription"]?.ToString();
             mainThreadActions.Enqueue(() => transcriptionText.text = transcription);
             Debug.Log("📝 WebGL Transcription: " + transcription);
         }
@@ -209,12 +207,10 @@ public class SocketManager : MonoBehaviour
         }
     }
 
-    private void onAIResponse(string jsonString)
+    public void onAIResponse(string reply)
     {
         try
         {
-            JObject json = JObject.Parse(jsonString);
-            string reply = json["response"]?.ToString();
             mainThreadActions.Enqueue(() => responseText.text = reply);
             Debug.Log("💬 WebGL AI Response: " + reply);
         }

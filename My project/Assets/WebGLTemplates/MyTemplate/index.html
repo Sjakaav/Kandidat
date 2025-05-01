@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8" />
+    <title>My project</title>
+    <link rel="shortcut icon" href="TemplateData/favicon.ico" />
+    <link rel="stylesheet" href="TemplateData/style.css" />
+  </head>
+  <body>
+    <!-- 1) Socket.IO client must load before Unity code tries to connect -->
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+
+    <!-- 2) Mic-Recorder bridge (your existing code) -->
+    <script>
+      window.Recorder = {
+        context: null, source: null, processor: null, buffer: [], sampleRate:0,
+        initStream(stream) {
+          this.context    = new (window.AudioContext||window.webkitAudioContext)();
+          this.sampleRate = this.context.sampleRate;
+          this.source     = this.context.createMediaStreamSource(stream);
+          this.processor  = this.context.createScriptProcessor(4096,1,1);
+          this.buffer.length = 0;
+          this.processor.onaudioprocess = e => {
+            this.buffer.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+          };
+          this.source.connect(this.processor);
+          this.processor.connect(this.context.destination);
+        },
+        StartMicRecording() {
+          navigator.mediaDevices.getUserMedia({ audio:true })
+            .then(s => { console.log("✅ Mic OK"); this.initStream(s) })
+            .catch(e => console.error("❌ Mic error",e));
+        },
+        StopMicRecording() {
+          this.processor.disconnect(); this.source.disconnect();
+          const total = this.buffer.reduce((sum,a)=>sum+a.length,0);
+          let data = new Float32Array(total), off=0;
+          for(let chunk of this.buffer) { data.set(chunk,off); off+=chunk.length; }
+          let wav = this.encodeWAV(data,this.sampleRate);
+          let blob = new Blob([wav],{type:'audio/wav'});
+          let reader = new FileReader();
+          reader.onloadend = () => {
+            let b64 = reader.result.split(',')[1];
+            window.unityInstance.SendMessage('MicManager','OnRecordingComplete',b64);
+          };
+          reader.readAsDataURL(blob);
+        },
+        encodeWAV(samples, sr) {
+          let buf = new ArrayBuffer(44 + samples.length*2),
+              dv  = new DataView(buf), wr = this.writeString.bind(this);
+          wr(dv,0,'RIFF'); dv.setUint32(4,36+samples.length*2,true);
+          wr(dv,8,'WAVE'); wr(dv,12,'fmt ');
+          dv.setUint32(16,16,true); dv.setUint16(20,1,true);
+          dv.setUint16(22,1,true); dv.setUint32(24,sr,true);
+          dv.setUint32(28,sr*2,true); dv.setUint16(32,2,true);
+          dv.setUint16(34,16,true); wr(dv,36,'data');
+          dv.setUint32(40,samples.length*2,true);
+          for(let i=0, o=44; i<samples.length; i++, o+=2) {
+            let s = Math.max(-1,Math.min(1,samples[i]));
+            dv.setInt16(o, s<0 ? s*0x8000 : s*0x7FFF, true);
+          }
+          return buf;
+        },
+        writeString(v, off, str){ for(let i=0;i<str.length;i++) v.setUint8(off+i,str.charCodeAt(i)); }
+      };
+      window.RequestMicPermission = () => Recorder.StartMicRecording();
+      window.StartMicRecording   = () => Recorder.StartMicRecording();
+      window.StopMicRecording    = () => Recorder.StopMicRecording();
+    </script>
+
+    <!-- 3) Unity canvas + loader -->
+    <div id="unity-container" class="unity-desktop">
+      <canvas id="unity-canvas" width="960" height="600"></canvas>
+      <div id="unity-loading-bar">
+        <div id="unity-logo"></div>
+        <div id="unity-progress-bar-empty">
+          <div id="unity-progress-bar-full"></div>
+        </div>
+      </div>
+      <div id="unity-warning"></div>
+      <div id="unity-footer">
+        <div id="unity-webgl-logo"></div>
+        <div id="unity-fullscreen-button"></div>
+        <div id="unity-build-title">My project</div>
+      </div>
+    </div>
+
+    <script>
+      const buildUrl  = "Build";
+      const loaderUrl = buildUrl + "/Build.loader.js";
+      const config    = {
+        dataUrl:            buildUrl + "/Build.data.br",
+        frameworkUrl:       buildUrl + "/Build.framework.js.br",
+        codeUrl:            buildUrl + "/Build.wasm.br",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName:        "DefaultCompany",
+        productName:        "My project",
+        productVersion:     "1.0.0",
+        showBanner:         (msg,type)=>{ /* your banner logic */ },
+      };
+
+      // 4) Inject Unity loader, then stash unityInstance globally
+      const script = document.createElement("script");
+      script.src = loaderUrl;
+      script.onload = () => {
+        createUnityInstance(
+          document.getElementById("unity-canvas"),
+          config,
+          prog => {
+            document.getElementById("unity-progress-bar-full")
+                    .style.width = 100 * prog + "%";
+          }
+        ).then(unityInstance => {
+          window.unityInstance = unityInstance;
+          document.getElementById("unity-loading-bar").style.display = "none";
+          document.getElementById("unity-fullscreen-button")
+                  .onclick = () => unityInstance.SetFullscreen(1);
+        }).catch(err => alert(err));
+      };
+      document.body.appendChild(script);
+    </script>
+  </body>
+</html>
