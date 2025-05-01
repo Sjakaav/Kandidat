@@ -131,8 +131,8 @@ public class SocketManager : MonoBehaviour
             pendingBase64Audio = base64Audio;
             return;
         }
-        // Wrap payload as JSON for JS-side parsing
-        var payload = JsonUtility.ToJson(new { transcription = base64Audio });
+        // Wrap the raw base64 in quotes so SocketIO_Emit → JSON.parse(js) yields a JS string
+        string payload = "\"" + base64Audio + "\"";
         SocketIO_Emit("audio_message", payload);
         Debug.Log("📤 WebGL sent audio_message");
 #else
@@ -175,7 +175,8 @@ public class SocketManager : MonoBehaviour
         isSocketReady = true;
         if (!string.IsNullOrEmpty(pendingBase64Audio))
         {
-            var payload = JsonUtility.ToJson(new { transcription = pendingBase64Audio });
+            // replay exactly the same wrapping logic
+            string payload = "\"" + pendingBase64Audio + "\"";
             SocketIO_Emit("audio_message", payload);
             pendingBase64Audio = null;
             Debug.Log("📤 WebGL sent pending audio_message");

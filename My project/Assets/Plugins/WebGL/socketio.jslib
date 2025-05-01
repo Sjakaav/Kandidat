@@ -1,27 +1,30 @@
 mergeInto(LibraryManager.library, {
   SocketIO_Connect: function (urlPtr) {
     var url = UTF8ToString(urlPtr);
-    // Note: `io` comes from the CDN script you loaded in index.html
     window.unitySocket = io(url);
 
     unitySocket.on("connect", function() {
-      // Calls C# method onSocketIOConnect()
-      Module.onSocketIOConnect && Module.onSocketIOConnect();
+      console.log("📡 JS: socket.connected → calling OnSocketIOConnect");
+      unityInstance.SendMessage('SocketManager', 'onSocketIOConnect', '');
     });
     unitySocket.on("disconnect", function() {
-      Module.onSocketIODisconnect && Module.onSocketIODisconnect();
+      console.log("📴 JS: socket.disconnected → calling onSocketIODisconnect");
+      unityInstance.SendMessage('SocketManager', 'onSocketIODisconnect', '');
     });
     unitySocket.on("connect_error", function(err) {
       console.error("Socket.IO connect_error", err);
-      Module.onConnectError && Module.onConnectError(err.message);
+      unityInstance.SendMessage('SocketManager', 'onConnectError', err.message);
     });
     unitySocket.on("transcription_ready", function(msg) {
+      // msg is already an object { transcription: "…" }
       var json = JSON.stringify(msg);
-      Module.onTranscription && Module.onTranscription(json);
+      console.log("📥 JS: transcription_ready →", json);
+      unityInstance.SendMessage('SocketManager', 'onTranscription', json);
     });
     unitySocket.on("ai_response", function(msg) {
       var json = JSON.stringify(msg);
-      Module.onAIResponse && Module.onAIResponse(json);
+      console.log("📥 JS: ai_response →", json);
+      unityInstance.SendMessage('SocketManager', 'onAIResponse', json);
     });
   },
 
@@ -29,6 +32,7 @@ mergeInto(LibraryManager.library, {
     if (!window.unitySocket) return;
     var ev   = UTF8ToString(eventPtr);
     var data = UTF8ToString(dataPtr);
+    console.log(`📤 JS: Emitting ${ev}`, data);
     unitySocket.emit(ev, JSON.parse(data));
   }
 });
