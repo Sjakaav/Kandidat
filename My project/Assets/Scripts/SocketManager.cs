@@ -198,25 +198,26 @@ public class SocketManager : MonoBehaviour
     {
         try
         {
+            // transcription is already the plain text
             mainThreadActions.Enqueue(() => transcriptionText.text = transcription);
-            Debug.Log("📝 WebGL Transcription: " + transcription);
+            Debug.Log("📝 Transcription: " + transcription);
         }
-        catch (Exception ex)
+        catch(Exception e)
         {
-            Debug.LogError("🚨 Error in onTranscription: " + ex.Message);
+            Debug.LogError("Failed to parse transcription JSON: " + e);
         }
     }
 
-    public void onAIResponse(string reply)
+    public void onAIResponse(string response)
     {
         try
         {
-            mainThreadActions.Enqueue(() => responseText.text = reply);
-            Debug.Log("💬 WebGL AI Response: " + reply);
+            mainThreadActions.Enqueue(() => responseText.text = response);
+            Debug.Log("💬 AI Response: " + response);
         }
-        catch (Exception ex)
+        catch(Exception e)
         {
-            Debug.LogError("🚨 Error in onAIResponse: " + ex.Message);
+            Debug.LogError("Failed to parse ai_response JSON: " + e);
         }
     }
 #endif

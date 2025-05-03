@@ -2146,7 +2146,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   responseText: {fileID: 1755235394}
-  transciptionText: {fileID: 2133051209}
+  transcriptionText: {fileID: 2133051209}
 --- !u!4 &6690763370994751175
 Transform:
   m_ObjectHideFlags: 0
