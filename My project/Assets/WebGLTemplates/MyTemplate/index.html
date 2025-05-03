@@ -2,9 +2,38 @@
 <html lang="en-us">
   <head>
     <meta charset="utf-8" />
-    <title>My project</title>
+    <title>SOSU AI Chatbot</title>
     <link rel="shortcut icon" href="TemplateData/favicon.ico" />
     <link rel="stylesheet" href="TemplateData/style.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+
+      #unity-container {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%;
+        height: 100%;
+        background: black;            /* black bars when aspect doesn’t match */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      #unity-canvas {
+        /* preserve a 16:9 aspect ratio by default */
+        width: 100%;
+        height: auto;
+        max-height: 100%;
+      }
+    </style>
   </head>
   <body>
     <!-- 1) Socket.IO client -->

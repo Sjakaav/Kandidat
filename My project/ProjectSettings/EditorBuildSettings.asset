@@ -6,6 +6,9 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/Scenes/MainMenu.unity
+    guid: f3e75195db9c68b4c9796dd2d7730872
+  - enabled: 1
     path: Assets/Scenes/WebGLMergeSTT.unity
     guid: 9320e77a3be6f7a4486edea115adfb1d
   m_configObjects:
