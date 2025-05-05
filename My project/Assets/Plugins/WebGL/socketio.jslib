@@ -35,5 +35,12 @@ mergeInto(LibraryManager.library, {
       // if parse fails, emit raw
       window.unitySocket.emit(ev, raw);
     }
+  },
+
+  SocketIO_Disconnect: function() {
+    if (window.unitySocket) {
+      window.unitySocket.disconnect();
+      delete window.unitySocket;
+    }
   }
 });

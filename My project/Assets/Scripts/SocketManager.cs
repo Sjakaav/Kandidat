@@ -9,11 +9,20 @@ using System.Collections;
 using System.Collections.Concurrent;
 using SocketIOClient;
 using SocketIOClient.Newtonsoft.Json;
+using UnityEngine.UI;
 
 public class SocketManager : MonoBehaviour
 {
     public TMP_Text responseText;
     public TMP_Text transcriptionText;
+    
+    [Header("Three state icons")]
+    [SerializeField] private GameObject connectedIcon;
+    [SerializeField] private GameObject disconnectedIcon;
+    [SerializeField] private GameObject reconnectingIcon;
+    
+    [Header("Thinking bubble")]
+    [SerializeField] private GameObject thinkingBubble;
 
     // ─── WebGL JS Bridge ────────────────────────────────────────────────────────
 #if UNITY_WEBGL && !UNITY_EDITOR
@@ -22,6 +31,9 @@ public class SocketManager : MonoBehaviour
 
     [DllImport("__Internal")]
     private static extern void SocketIO_Emit(string eventName, string jsonData);
+    
+    [DllImport("__Internal")]
+    private static extern void SocketIO_Disconnect();
 #endif
     // ────────────────────────────────────────────────────────────────────────────
 
@@ -35,8 +47,26 @@ public class SocketManager : MonoBehaviour
     private string pendingBase64Audio = null;
     private bool isSocketReady = false;
 
+    public enum State { Connected, Disconnected, Reconnecting }
+    private void ShowState(State s)
+    {
+        connectedIcon    .SetActive(s == State.Connected);
+        disconnectedIcon .SetActive(s == State.Disconnected);
+        reconnectingIcon .SetActive(s == State.Reconnecting);
+    }
+    
+    void OnDestroy()
+    {
+        #if UNITY_WEBGL && !UNITY_EDITOR
+          SocketIO_Disconnect();
+        #else
+                if (socket != null) socket.Disconnect();
+        #endif
+    }
     void Start()
     {
+        ShowState(State.Disconnected);
+        thinkingBubble.SetActive(false);
 #if UNITY_WEBGL && !UNITY_EDITOR
         // WebGL: use JS bridge
         SocketIO_Connect(serverIP);
@@ -53,6 +83,7 @@ public class SocketManager : MonoBehaviour
         {
             Debug.Log("✅ Connected to Python server at " + serverIP);
             isSocketReady = true;
+            ShowState(State.Connected);
 
             if (!string.IsNullOrEmpty(pendingBase64Audio))
             {
@@ -70,6 +101,7 @@ public class SocketManager : MonoBehaviour
         socket.OnReconnectAttempt += (sender, e) =>
         {
             Debug.Log("🔁 Attempting to reconnect...");
+            ShowState(State.Reconnecting);
         };
 
         socket.On("transcription_ready", response =>
@@ -79,7 +111,10 @@ public class SocketManager : MonoBehaviour
                 string jsonString = response.GetValue<string>();
                 JObject json = JObject.Parse(jsonString);
                 string transcription = json["transcription"]?.ToString();
-                mainThreadActions.Enqueue(() => transcriptionText.text = transcription);
+                mainThreadActions.Enqueue(() => {
+                    transcriptionText.text = transcription;
+                    thinkingBubble.SetActive(true);    // <-- show bubble
+                });
                 Debug.Log("📝 Transcription: " + transcription);
             }
             catch (Exception ex)
@@ -95,7 +130,10 @@ public class SocketManager : MonoBehaviour
                 string jsonString = response.GetValue<string>();
                 JObject json = JObject.Parse(jsonString);
                 string reply = json["response"]?.ToString();
-                mainThreadActions.Enqueue(() => responseText.text = reply);
+                mainThreadActions.Enqueue(() => {
+                    responseText.text = reply;
+                    thinkingBubble.SetActive(false);   // <-- hide bubble
+                });
                 Debug.Log("💬 AI Response: " + reply);
             }
             catch (Exception ex)
@@ -108,6 +146,7 @@ public class SocketManager : MonoBehaviour
         {
             Debug.LogWarning("🔌 Disconnected from server!");
             isSocketReady = false;
+            ShowState(State.Disconnected);
         };
 
         socket.Connect();
@@ -173,6 +212,8 @@ public class SocketManager : MonoBehaviour
     {
         Debug.Log("✅ WebGL Socket.IO connected");
         isSocketReady = true;
+        ShowState(State.Connected);
+
         if (!string.IsNullOrEmpty(pendingBase64Audio))
         {
             // replay exactly the same wrapping logic
@@ -187,11 +228,13 @@ public class SocketManager : MonoBehaviour
     {
         Debug.LogWarning("🔌 WebGL Socket.IO disconnected");
         isSocketReady = false;
+        ShowState(State.Disconnected);
     }
 
     public void onConnectError(string message)
     {
         Debug.LogError("🔌 WebGL Socket.IO connect_error: " + message);
+        ShowState(State.Reconnecting);
     }
 
     public void onTranscription(string transcription)
@@ -199,7 +242,10 @@ public class SocketManager : MonoBehaviour
         try
         {
             // transcription is already the plain text
-            mainThreadActions.Enqueue(() => transcriptionText.text = transcription);
+            mainThreadActions.Enqueue(() => {
+                transcriptionText.text = transcription;
+                thinkingBubble.SetActive(true);       // show bubble
+            });
             Debug.Log("📝 Transcription: " + transcription);
         }
         catch(Exception e)
@@ -212,7 +258,10 @@ public class SocketManager : MonoBehaviour
     {
         try
         {
-            mainThreadActions.Enqueue(() => responseText.text = response);
+            mainThreadActions.Enqueue(() => {
+                responseText.text = response;
+                thinkingBubble.SetActive(false);      // hide bubble
+            });
             Debug.Log("💬 AI Response: " + response);
         }
         catch(Exception e)
