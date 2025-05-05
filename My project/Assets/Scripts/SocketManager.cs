@@ -38,7 +38,10 @@ public class SocketManager : MonoBehaviour
     // ────────────────────────────────────────────────────────────────────────────
 
     // Server URL (same for WebGL and standalone)
-    private string serverIP = "http://localhost:5000";
+    // private string serverIP = "http://localhost:5000";
+    private string serverIP = "https://sosusnak.ngrok.app/";
+     
+    
 
     // Desktop fallback client
     private SocketIOUnity socket;
