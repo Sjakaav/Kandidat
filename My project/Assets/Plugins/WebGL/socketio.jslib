@@ -1,42 +1,48 @@
 mergeInto(LibraryManager.library, {
+  // call from C#: SocketIO_Connect("https://…");
   SocketIO_Connect: function(urlPtr) {
     var url = UTF8ToString(urlPtr);
+    window.socketQueue = [];
     window.unitySocket = io(url);
 
-    window.unitySocket.on("connect", function() {
-      window.unityInstance.SendMessage("SocketManager", "onSocketIOConnect", "");
-    });
-    window.unitySocket.on("disconnect", function() {
-      window.unityInstance.SendMessage("SocketManager", "onSocketIODisconnect", "");
-    });
-    window.unitySocket.on("connect_error", function(err) {
-      window.unityInstance.SendMessage("SocketManager", "onConnectError", err.message);
-    });
+    function enqueue(method, data) {
+      socketQueue.push({ method: method, data: data });
+    }
 
-    // unwrap the JSON on the JS side and pass only the raw string
-    window.unitySocket.on("transcription_ready", function(payload) {
-      // payload.transcription is a JS string
-      window.unityInstance.SendMessage("SocketManager", "onTranscription", payload.transcription || "");
+    window.unitySocket.on("connect", () => enqueue("onSocketIOConnect", ""));
+    window.unitySocket.on("disconnect", () => enqueue("onSocketIODisconnect", ""));
+    window.unitySocket.on("connect_error", (err) => enqueue("onConnectError", err.message));
+
+    window.unitySocket.on("transcription_ready", (payload) => {
+      enqueue("onTranscription", (payload.transcription||""));
     });
-    window.unitySocket.on("ai_response", function(payload) {
-      window.unityInstance.SendMessage("SocketManager", "onAIResponse", payload.response || "");
+    window.unitySocket.on("ai_response", (payload) => {
+      enqueue("onAIResponse", (payload.response||""));
     });
   },
 
+  // call from C#: SocketIO_Emit("audio_message", "\"…base64…\"");
   SocketIO_Emit: function(eventPtr, dataPtr) {
     if (!window.unitySocket) return;
-    var ev   = UTF8ToString(eventPtr);
-    var raw  = UTF8ToString(dataPtr);
-    // dataPtr will already be a JSON-encoded string or a quoted string
+    var ev  = UTF8ToString(eventPtr);
+    var raw = UTF8ToString(dataPtr);
     try {
-      var obj = JSON.parse(raw);
-      window.unitySocket.emit(ev, obj);
-    } catch (e) {
-      // if parse fails, emit raw
+      window.unitySocket.emit(ev, JSON.parse(raw));
+    } catch(e) {
       window.unitySocket.emit(ev, raw);
     }
   },
 
+  // call each frame from Unity to flush the queue
+  PollSocketEvents: function() {
+    if (!window.socketQueue || !window.unityInstance) return;
+    while (window.socketQueue.length) {
+      var e = window.socketQueue.shift();
+      window.unityInstance.SendMessage("SocketManager", e.method, e.data);
+    }
+  },
+
+  // if you ever want to disconnect from C#
   SocketIO_Disconnect: function() {
     if (window.unitySocket) {
       window.unitySocket.disconnect();

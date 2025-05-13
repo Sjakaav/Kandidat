@@ -33,6 +33,9 @@ public class SocketManager : MonoBehaviour
     private static extern void SocketIO_Emit(string eventName, string jsonData);
     
     [DllImport("__Internal")]
+    private static extern void PollSocketEvents();
+    
+    [DllImport("__Internal")]
     private static extern void SocketIO_Disconnect();
 #endif
     // ────────────────────────────────────────────────────────────────────────────
@@ -158,6 +161,10 @@ public class SocketManager : MonoBehaviour
 
     void Update()
     {
+#if UNITY_WEBGL && !UNITY_EDITOR
+    // flush any queued socket events
+    PollSocketEvents();
+#endif
         while (mainThreadActions.TryDequeue(out var action))
         {
             action.Invoke();
